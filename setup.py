@@ -1,12 +1,11 @@
 from setuptools import setup
 
 setup(
-        name="GAGL",
+        name="LivDet_ART",
         version="0.0.1",
+        description="Custom ART for Fingerprint Liveness Detection",
         author="Umberto Gagliardini",
         author_email="u.gagliardini@studenti.unina.it",
-        packages=["gagl"],
-        package_dir={"gagl":"gagl"},
-        url="https://github.com/umbertogagl97/LivDetGagl/",
+        url="https://github.com/umbertogagl97/LivDet_art/",
         install_requires=[  "numpy >= 1.8" ]
 )
