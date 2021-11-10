@@ -7,6 +7,6 @@ setup(
         author_email="u.gagliardini@studenti.unina.it",
         packages=["gagl"],
         package_dir={"gagl":"gagl"},
-        url="http://github.com/cehorn/GLRM/",
+        url="https://github.com/umbertogagl97/LivDetGagl/",
         install_requires=[  "numpy >= 1.8" ]
 )
