@@ -5,6 +5,7 @@ setup(
         version="0.0.1",
         description="Custom ART for Fingerprint Liveness Detection",
         packages=["ldart"],
+        package_dir={"ladart":"ldart"},
         author="Umberto Gagliardini",
         author_email="u.gagliardini@studenti.unina.it",
         url="https://github.com/umbertogagl97/LivDet_art/",
