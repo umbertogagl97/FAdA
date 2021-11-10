@@ -8,5 +8,6 @@ setup(
         author="Umberto Gagliardini",
         author_email="u.gagliardini@studenti.unina.it",
         url="https://github.com/umbertogagl97/LivDet_art/",
-        install_requires=[  "numpy >= 1.8" ]
+        install_requires=[  "numpy >= 1.8" ],
+        include_package_data=True,
 )
