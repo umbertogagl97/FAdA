@@ -32,8 +32,6 @@ from torchvision.transforms.functional import InterpolationMode
 
 #----------------------------------------------------------------transforms
 
-transf_init=transforms.Resize(size=(1000,1000),interpolation=InterpolationMode.NEAREST)
-
 data_transform_test= transforms.Compose([transforms.Resize([224,224],interpolation=InterpolationMode.NEAREST),
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
           ])
@@ -105,7 +103,7 @@ def test_average(classifier,input):
   #value=[]
   prob=nn.Softmax(dim=0)
   
-  if input.shape[2]!=1000:
+  if input.shape[2]==224:
     input=transf_init(input)
 
   n=input.shape
@@ -134,11 +132,11 @@ def compute_perturb(x,x_adv):
     x_adv: img contraddittorie
     return: pertubazioni
   '''
-  if x_adv.shape[2]!=1000:
+  if x_adv.shape[2]==224:
     x=np.array(transf_resize(torch.Tensor(x)))
   perturb=x_adv-x
   
-  if perturb.shape[2]!=1000:
+  if perturb.shape[2]==224:
     perturb=np.array(transf_init(torch.Tensor(perturb)))
   
   return perturb
