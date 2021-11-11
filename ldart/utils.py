@@ -38,7 +38,7 @@ data_transform_test= transforms.Compose([transforms.Resize([224,224],interpolati
           ])
 transf_resize=transforms.Resize([224,224],interpolation=InterpolationMode.NEAREST)
 
-transf_init=transforms.Resize(size=(1000,1000),interpolation=InterpolationMode.NEAREST)
+#transf_init=transforms.Resize(size=(1000,1000),interpolation=InterpolationMode.NEAREST)
 
 transf_load= transforms.Compose([transforms.ToTensor(),
                                  #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
