@@ -9,7 +9,7 @@ LDART is based on Adversarial Robustness Toolbox (ART) and it is specialized in 
 ## ldart
 The main directory that contains:
 ##### utils.py
-libraries, transformation and functions for attacks implementation
+libraries, transformations and functions for attacks implementation
 ##### attacks
 directory with main attacks
 
