@@ -11,12 +11,13 @@ from art.utils import to_categorical
 from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import random
+from torchvision import datasets, models, transforms
 
 
 import torch.optim as optim
 
 import torchvision
-from torchvision import datasets, models, transforms
+
 #import time
 #import os
 #import shutil
@@ -37,12 +38,17 @@ data_transform_test= transforms.Compose([transforms.Resize([224,224],interpolati
           ])
 transf_resize=transforms.Resize([224,224],interpolation=InterpolationMode.NEAREST)
 
+transf_init=transforms.Resize(size=(1000,1000),interpolation=InterpolationMode.NEAREST)
+
 transf_load= transforms.Compose([transforms.ToTensor(),
                                  #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
           ])
 trans_norm=transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
 #--------------------------------------------------------------functions
+
+def compute_transf_init(size_init):
+  return transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
 
 def compute_mask(img):
   import cv2
@@ -83,7 +89,7 @@ def compute_mask(img):
   return ((image_binary-np.min(image_binary))/(np.max(image_binary)-np.min(image_binary)))
 
 
-def test_average(classifier,input,transf_init):
+def test_average(classifier,input):
   '''
   classifier: model trained
   test_loader: dataloader 
@@ -98,7 +104,7 @@ def test_average(classifier,input,transf_init):
     return: 80% of n
     '''
     return tuple(int(np.ceil(i * (80/100))) for i in n)
-
+  
   preds=[]
   #value=[]
   prob=nn.Softmax(dim=0)
@@ -126,7 +132,7 @@ def test_average(classifier,input,transf_init):
   return predicted,probabilities,values
 
 
-def compute_perturb(x,x_adv,transf_init):
+def compute_perturb(x,x_adv):
   '''
     x: img originali
     x_adv: img contraddittorie
