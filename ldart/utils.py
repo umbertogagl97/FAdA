@@ -22,6 +22,11 @@ from torch.utils.data import TensorDataset, DataLoader
 import cv2
 from google.colab.patches import cv2_imshow
 
+from art.utils import to_categorical
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+import random
+
 #transforms
 
 transf_init=transforms.Resize(size=(1000,1000),interpolation=InterpolationMode.NEAREST)
