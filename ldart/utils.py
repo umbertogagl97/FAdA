@@ -83,7 +83,7 @@ def compute_mask(img):
   return ((image_binary-np.min(image_binary))/(np.max(image_binary)-np.min(image_binary)))
 
 
-def test_average(classifier,input):
+def test_average(classifier,input,transf_init):
   '''
   classifier: model trained
   test_loader: dataloader 
@@ -126,7 +126,7 @@ def test_average(classifier,input):
   return predicted,probabilities,values
 
 
-def compute_perturb(x,x_adv):
+def compute_perturb(x,x_adv,transf_init):
   '''
     x: img originali
     x_adv: img contraddittorie
