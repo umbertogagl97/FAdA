@@ -95,7 +95,7 @@ def test_average(classifier,input):
 
   preds=[]
   #value=[]
-  prob=nn.Softmax()
+  prob=nn.Softmax(dim=0)
   
   if input.shape[2]!=1000:
     input=transf_init(input)
