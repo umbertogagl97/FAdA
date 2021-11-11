@@ -83,7 +83,7 @@ def compute_mask(img):
 
 def test_average(classifier,input):
   '''
-  model: model trained
+  classifier: model trained
   test_loader: dataloader 
   return: pred: classe predetta, probabilities, values
   '''
@@ -147,7 +147,7 @@ def print_subplot(perturb,x_test,y_test,preds,x_test_adv,value_preds_adv):
     value_preds_adv: probabilità predette img contraddittorie
     normalize: se True normalizza le immagini
   '''
-
+  classes_name=['Live','Spoof']
   #nel seguente ciclo for si crea un vettore delle classi predette ordinato per probabilità decrescente
   for i in range(len(x_test)):#(x_test.shape[0]):
     value=value_preds_adv[i]*100
@@ -189,7 +189,11 @@ def print_subplot(perturb,x_test,y_test,preds,x_test_adv,value_preds_adv):
     plt.show()
           
 
-def save_read(x):
+def save_read(x,classifier):
+  '''
+  x: img ndarray 3xnxm
+  classifier: model trained
+  '''
   print("valori img originale:")
   print(test_average(classifier,torch.Tensor(x).unsqueeze_(0)))
   x=x.transpose(1,2,0)*255
