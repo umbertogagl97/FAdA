@@ -1,9 +1,20 @@
 #----------------------------------------------------library
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
 import numpy as np
+import cv2
+from google.colab.patches import cv2_imshow
+import torch.nn as nn
+import pandas as pd
+import matplotlib.pyplot as plt
+from art.utils import to_categorical
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+import random
+
+
+import torch.optim as optim
+
 import torchvision
 from torchvision import datasets, models, transforms
 #import time
@@ -11,21 +22,13 @@ from torchvision import datasets, models, transforms
 #import shutil
 #import copy
 
-import pandas as pd
-import matplotlib.pyplot as plt
+
 import sys
 
 from torchvision.transforms.functional import InterpolationMode
 
-from torch.utils.data import TensorDataset, DataLoader
+#from torch.utils.data import TensorDataset, DataLoader
 
-import cv2
-from google.colab.patches import cv2_imshow
-
-from art.utils import to_categorical
-from PIL import Image, ImageFile
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-import random
 
 #----------------------------------------------------------------transforms
 
@@ -44,6 +47,7 @@ trans_norm=transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 #--------------------------------------------------------------functions
 
 def compute_mask(img):
+  import cv2
   #img iniziale [0,1]
   img=np.array(img[0])
   img=img.transpose(1,2,0)
@@ -87,6 +91,9 @@ def test_average(classifier,input):
   test_loader: dataloader 
   return: pred: classe predetta, probabilities, values
   '''
+  import torch.nn as nn
+  import pandas as pd
+
   def calc_size(n):
     '''
     n: int 
@@ -147,6 +154,8 @@ def print_subplot(perturb,x_test,y_test,preds,x_test_adv,value_preds_adv):
     value_preds_adv: probabilità predette img contraddittorie
     normalize: se True normalizza le immagini
   '''
+  import matplotlib.pyplot as plt
+
   classes_name=['Live','Spoof']
   #nel seguente ciclo for si crea un vettore delle classi predette ordinato per probabilità decrescente
   for i in range(len(x_test)):#(x_test.shape[0]):
@@ -194,6 +203,9 @@ def save_read(x,classifier):
   x: img ndarray 3xnxm
   classifier: model trained
   '''
+  import cv2
+  from google.colab.patches import cv2_imshow
+
   print("valori img originale:")
   print(test_average(classifier,torch.Tensor(x).unsqueeze_(0)))
   x=x.transpose(1,2,0)*255
@@ -216,6 +228,7 @@ def accuracy_class(class_str,pd_class):
   class_str: string class
   pd_class: dataframe
   '''
+
   n=np.sum(pd_class['real']==class_str)
   print("# img"+class_str+": "+str(n))
 
