@@ -203,7 +203,7 @@ def print_subplot(perturb,x_test,y_test,preds,x_test_adv,value_preds_adv):
     plt.show()
           
 
-def save_read(x,classifier):
+def save_read(x,classifier,transf_init):
   '''
   x: img ndarray 3xnxm
   classifier: model trained
@@ -212,7 +212,7 @@ def save_read(x,classifier):
   from google.colab.patches import cv2_imshow
 
   print("valori img originale:")
-  print(test_average(classifier,torch.Tensor(x).unsqueeze_(0)))
+  print(test_average(classifier,torch.Tensor(x).unsqueeze_(0),transf_init))
   x=x.transpose(1,2,0)*255
   #plt.imsave('prova.bmp',x)
   cv2.imwrite('prova.png',x)
@@ -225,7 +225,7 @@ def save_read(x,classifier):
   #plt.imshow(prova_arr*255)
   #cv2_imshow(x*255)
   print("valori dopo salvataggio/lettura:")
-  print(test_average(classifier,torch.Tensor(x.transpose(2,0,1)).unsqueeze_(0)))
+  print(test_average(classifier,torch.Tensor(x.transpose(2,0,1)).unsqueeze_(0),transf_init))
           
           
 def accuracy_class(class_str,pd_class):
