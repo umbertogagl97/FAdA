@@ -102,7 +102,7 @@ class IterativeFastGradientMethod(EvasionAttack):
         """
         adv_x = x.copy()
         
-        size_init=np.array(a.shape[2:4])
+        size_init=np.array(x.shape[2:4])
         transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
         
         pred,values,_=test_average(self.estimator,torch.Tensor(adv_x),transf_orig)
