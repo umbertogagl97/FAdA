@@ -374,12 +374,15 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
 
         x_adv = x.astype(ART_NUMPY_DTYPE)
         
+        size_init=np.array(x.shape[2:4])
+        transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)        
+        
         #questo for serve per i riavvi random, quindi se l'immagine non è spoof spoof è inutile
         for t in trange(max(1, self.nb_random_init), desc="AutoPGD - restart", disable=not self.verbose):
             # Determine correctly predicted samples
             #y_pred = self.estimator.predict(x_adv)
             
-            pred,value,_=test_average(self.estimator,torch.Tensor(x_adv)) #preds è già la classe finale mentre y_pred contiene i due valori
+            pred,value,_=test_average(self.estimator,torch.Tensor(x_adv),transf_orig) #preds è già la classe finale mentre y_pred contiene i due valori
             
             if self.targeted:
                 sample_is_robust = np.argmax(y_pred, axis=1) != np.argmax(y, axis=1)
@@ -575,7 +578,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
 
                         #f_k_p_1 è il valore della loss function e quantifica di quanto sbaglia il classificatore, quindi se è 0 interrompo le iterazioni e cambio punto di partenza
                         
-                        pred,value,_=test_average(self.estimator,torch.Tensor(x_k_p_1))
+                        pred,value,_=test_average(self.estimator,torch.Tensor(x_k_p_1),transf_orig)
                         if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
                           sample_is_not_robust=False
                         elif ((pred!=np.argmax(y, axis=1)) and (pred== self.class_target) and (np.max(value)<self.confidence)):  
@@ -616,7 +619,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                             x_k_m_1 = x_k
                             x_k = x_k_p_1.copy()
 
-                pred,value,_=test_average(self.estimator,torch.Tensor(x_k))
+                pred,value,_=test_average(self.estimator,torch.Tensor(x_k),transf_orig)
                 #y_pred_adv_k = self.estimator.predict(x_k)
                 if self.targeted:
                     sample_is_not_robust_k = np.invert(np.argmax(y_pred_adv_k, axis=1) != np.argmax(y_batch, axis=1))
