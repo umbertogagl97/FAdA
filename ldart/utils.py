@@ -38,8 +38,6 @@ data_transform_test= transforms.Compose([transforms.Resize([224,224],interpolati
           ])
 transf_resize=transforms.Resize([224,224],interpolation=InterpolationMode.NEAREST)
 
-#transf_init=transforms.Resize(size=(1000,1000),interpolation=InterpolationMode.NEAREST)
-
 transf_load= transforms.Compose([transforms.ToTensor(),
                                  #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
           ])
@@ -49,6 +47,7 @@ trans_norm=transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
 def compute_transf_init(size_init):
   return transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
+
 
 def compute_mask(img):
   import cv2
@@ -89,10 +88,11 @@ def compute_mask(img):
   return ((image_binary-np.min(image_binary))/(np.max(image_binary)-np.min(image_binary)))
 
 
-def test_average(classifier,input):
+def test_average(classifier,input,transf_init):
   '''
   classifier: model trained
-  test_loader: dataloader 
+  test_loader: dataloader
+  transf_init: resize immagine a risoluzione originale
   return: pred: classe predetta, probabilities, values
   '''
   import torch.nn as nn
@@ -132,10 +132,11 @@ def test_average(classifier,input):
   return predicted,probabilities,values
 
 
-def compute_perturb(x,x_adv):
+def compute_perturb(x,x_adv,transf_init):
   '''
     x: img originali
     x_adv: img contraddittorie
+    transf_init: resize immagine a risoluzione originale
     return: pertubazioni
   '''
   if x_adv.shape[2]==224:
