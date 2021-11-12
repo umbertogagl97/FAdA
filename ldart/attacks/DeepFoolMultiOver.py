@@ -90,8 +90,11 @@ class DeepFool_mod(EvasionAttack):
         x_adv = x.astype(ART_NUMPY_DTYPE)
 
         #preds = self.estimator.predict(x, batch_size=self.batch_size)
-
-        class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(x_adv))
+        
+        size_init=np.array(x.shape[2:4])
+        transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
+        
+        class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(x_adv),transf_orig)
         preds=np.array(preds).reshape(1,2)
 
         if self.estimator.nb_classes == 2 and preds.shape[1] == 1:
@@ -198,7 +201,7 @@ class DeepFool_mod(EvasionAttack):
                     batch += r_var
                 batch=batch.astype(np.single)
                 # Recompute prediction for new x
-                class_pred_i,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch))
+                class_pred_i,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch),transf_orig)
                 preds=np.array(preds).reshape(1,2)
                 #f_batch = self.estimator.predict(batch)
                 #fk_i_hat = np.argmax(f_batch, axis=1)
@@ -234,7 +237,7 @@ class DeepFool_mod(EvasionAttack):
                       self.estimator.clip_values[1],
                       out=batch,
                   )   
-              class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch))
+              class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch),transf_orig)
               if ((class_pred==np.argmax(y, axis=1)) and (class_pred!= self.class_target)):
                   active=True
               elif ((class_pred!=np.argmax(y, axis=1)) and (class_pred== self.class_target) and (np.max(prob_preds)<self.confidence)): 
