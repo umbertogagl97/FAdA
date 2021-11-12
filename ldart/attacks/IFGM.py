@@ -102,7 +102,10 @@ class IterativeFastGradientMethod(EvasionAttack):
         """
         adv_x = x.copy()
         
-        pred,values,_=test_average(self.estimator,torch.Tensor(adv_x))
+        size_init=np.array(a.shape[2:4])
+        transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
+        
+        pred,values,_=test_average(self.estimator,torch.Tensor(adv_x),transf_orig)
         if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
            active=True
         elif ((pred!=np.argmax(y, axis=1)) and (pred== self.class_target) and (np.max(values)<self.confidence)): 
@@ -129,7 +132,7 @@ class IterativeFastGradientMethod(EvasionAttack):
 
                 current_x = self._apply_perturbation(adv_x, perturbation, current_eps)
                 adv_x = current_x
-                pred,values,_=test_average(self.estimator,torch.Tensor(adv_x))
+                pred,values,_=test_average(self.estimator,torch.Tensor(adv_x),transf_orig)
 
                 # If targeted active check to see whether we have hit the target, otherwise head to anything but
                 if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
