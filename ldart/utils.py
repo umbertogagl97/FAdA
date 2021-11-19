@@ -56,6 +56,9 @@ def enhanc(img,mask,size_out : Optional[int]=0):
   size_out: (int) effettua un resize dell'immagine prima dell'enhancement (se 0 dà in uscita l'img con le stesse dim dell'input)
   return: img_en 1x3xnxm
   '''
+
+  from FingerprintImageEnhancer import *
+
   res=False
   #res=True
   r, g, b = img[0,0,:,:],img[0,1,:,:],img[0,2,:,:]
