@@ -91,7 +91,7 @@ class IterativeFastGradientMethod(EvasionAttack):
             if self.eps.ndim > x.ndim:
                 raise ValueError("The `eps` shape must be broadcastable to input shape.")
 
-    def _minimal_perturbation(self, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    def _minimal_perturbation(self, x: np.ndarray, y: np.ndarray, mask_mod, enh) -> np.ndarray:
         """
         Iteratively compute the minimal perturbation necessary to make the class prediction change. Stop when the
         first adversarial example was found.
@@ -101,10 +101,10 @@ class IterativeFastGradientMethod(EvasionAttack):
         :return: An array holding the adversarial examples.
         """
         adv_x = x.copy()
-        
+
         size_init=np.array(x.shape[2:4])
         transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
-        
+
         pred,values,_=test_average(self.estimator,torch.Tensor(adv_x),transf_orig)
         if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
            active=True
@@ -118,22 +118,35 @@ class IterativeFastGradientMethod(EvasionAttack):
         iter=0
         if active==True:
           adv_x=transf_resize(torch.Tensor(adv_x))
-          mask_mod=compute_mask(torch.Tensor(adv_x))
+          #mask_mod=compute_mask(torch.Tensor(adv_x))
+          #cv2_imshow(mask_mod*255)
           adv_x=np.array(adv_x)
-
+          #adv_x=enhanc(adv_x,[224,224],mask_mod)
+          #list_en=[i for i in range(0,self.max_iter,step_en)]
+          #x_1=adv_x.copy()
           while active==True and partial_stop_condition and iter<self.max_iter:
                 iter+=1
+                #sys.stdout.write("\rIter: {0}/{1}".format(iter,self.max_iter))
+                #sys.stdout.flush()
                 #calcolo perturbazione
                 perturbation = self._compute_perturbation(adv_x, y, mask_mod) #[-1,1]
                 
                 #trasformazione in gray
                 r, g, b = perturbation[0,0,:,:],perturbation[0,1,:,:],perturbation[0,2,:,:]
                 perturbation = 0.2989 * r + 0.5870 * g + 0.1140 * b
-
+                
                 current_x = self._apply_perturbation(adv_x, perturbation, current_eps)
-                adv_x = current_x
+                adv_x=current_x
+                
+                #if iter in list_en: adv_x=enhanc(adv_x,mask_mod)
+                if enh:
+                  #print("prima")
+                  #cv2_imshow(adv_x[0].transpose(1,2,0)*255)
+                  adv_x=enhanc(adv_x,mask_mod)
+                  #print("dopo")
+                  #cv2_imshow(adv_x[0].transpose(1,2,0)*255)                  
                 pred,values,_=test_average(self.estimator,torch.Tensor(adv_x),transf_orig)
-
+                
                 # If targeted active check to see whether we have hit the target, otherwise head to anything but
                 if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
                   active=True
@@ -145,9 +158,11 @@ class IterativeFastGradientMethod(EvasionAttack):
                 current_eps = current_eps + self.eps_step
                 partial_stop_condition = current_eps <= self.eps
 
+          #adv_x=enhanc(adv_x,[500,500],mask_mod)
+
         return adv_x
 
-    def generate(self, x: np.ndarray, y: Optional[np.ndarray] = None, **kwargs) -> np.ndarray:
+    def generate(self, mask, x: np.ndarray, y: Optional[np.ndarray] = None, enh: Optional[bool] = False, **kwargs) -> np.ndarray:
         """Generate adversarial samples and return them in an array.
         :param x: An array with the original inputs.
         :param y: Target values (class labels) one-hot-encoded of shape (nb_samples, nb_classes) or indices of shape
@@ -169,7 +184,7 @@ class IterativeFastGradientMethod(EvasionAttack):
            y = get_labels_np_array(self.estimator.predict(x))  # type: ignore
 
         # Return adversarial examples computed with minimal perturbation if option is active
-        adv_x_best = self._minimal_perturbation(x, y)
+        adv_x_best = self._minimal_perturbation(x, y, mask, enh)
         
         return adv_x_best
 
