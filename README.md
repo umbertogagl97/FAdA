@@ -14,4 +14,8 @@ libraries, transformations and functions for attacks implementation
 directory with main attacks
 
 ## Examples
-Directory contains examples notebooks about attacks to scanners
+Directory that contains examples notebooks about attacks to scanners
+##### attacco_scanner
+notebook that tests a scanner
+##### attacco_scanner_save_images
+notebook that attacks a scanner with spoof images and saves only images adv Live
