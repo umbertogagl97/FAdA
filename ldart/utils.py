@@ -49,8 +49,49 @@ def compute_transf_init(size_init):
   return transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
 
 
-def compute_mask(img):
-  import cv2
+def enhanc(img,mask,size_out : Optional[int]=0): 
+  '''
+  img: ndarray 1x3xnxm
+  mask: ndarray nxm (same dim of size_out)
+  size_out: (int) effettua un resize dell'immagine prima dell'enhancement (se 0 dà in uscita l'img con le stesse dim dell'input)
+  return: img_en 1x3xnxm
+  '''
+  res=False
+  #res=True
+  r, g, b = img[0,0,:,:],img[0,1,:,:],img[0,2,:,:]
+  img_g = 0.2989 * r + 0.5870 * g + 0.1140 * b
+  size_init=img_g.shape
+  #img_g=img_g.astype('float32')
+  finger_en=FingerprintImageEnhancer()
+  #img=img[0].transpose(1,2,0)
+  if size_out==0: #se non voglio una dimensione specifica in uscita trasformo l'img finale con le dim iniziali
+    if size_init[0]<350: res=True
+    out,failed = finger_en.enhance(img=img_g,resize=res,size=350)
+    if res:
+      out = cv2.resize(np.array(out), (size_init[0],size_init[1]),interpolation=cv2.INTER_NEAREST)
+  else:
+    #inserire controllo se size_out<350
+    res=True
+    out,failed = finger_en.enhance(img=img_g,resize=res,size=size_out)
+
+  size_out=out.shape[0]
+  if failed==False:
+    out=1-out
+    img=np.zeros([1,3,size_out,size_out])#size_init[0],size_init[1]])
+    for i in range(3):
+      img[0,i,:,:]=out
+    img=np.where(mask == 0.0, 1, img)
+  else: 
+    print("failed enhanc")
+
+  return img
+
+
+def compute_mask(img,n_contours=3):
+  '''
+  img: tensor 1x3xnxm
+  n_contours: numero di contorni da tracciare nel passo intermedio (consigliati: 3 per img 224x224, 6 per img 500x500)
+  '''
   #img iniziale [0,1]
   img=np.array(img[0])
   img=img.transpose(1,2,0)
@@ -62,6 +103,7 @@ def compute_mask(img):
   gray = (gray - np.min(gray)) / (np.max(gray) - np.min(gray))
   gray=gray*255
   gray=gray.astype('uint8')
+  #cv2_imshow(gray)
   #calcola immagine binaria
   ret, imgf = cv2.threshold(gray, 0,255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
 
@@ -77,15 +119,15 @@ def compute_mask(img):
   contours =cv2.findContours(imgf, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
   cv2.drawContours(image_contours,
                       contours, -1,
-                      (255,255), 3)
-
+                      (255,255), n_contours)
+  #cv2_imshow(image_contours)
   contours = cv2.findContours(image_contours, cv2.RETR_LIST,
                             cv2.CHAIN_APPROX_SIMPLE)[0]
   #disegna solo il contorno più esterno
   cv2.drawContours(image_binary, [max(contours, key = cv2.contourArea)],
                   -1, (255, 255),-1)
   #restituisce immagine [0,1]
-  return ((image_binary-np.min(image_binary))/(np.max(image_binary)-np.min(image_binary)))
+  return image_binary/255
 
 
 def test_average(classifier,input,transf_init):
@@ -136,15 +178,14 @@ def compute_perturb(x,x_adv,transf_init):
   '''
     x: img originali
     x_adv: img contraddittorie
-    transf_init: resize immagine a risoluzione originale
     return: pertubazioni
   '''
+  #calcola la perturbazione con img 224x224
   if x_adv.shape[2]==224:
     x=np.array(transf_resize(torch.Tensor(x)))
   perturb=x_adv-x
   
-  if perturb.shape[2]==224:
-    perturb=np.array(transf_init(torch.Tensor(perturb)))
+  perturb=np.array(transf_init(torch.Tensor(perturb)))
   
   return perturb
 
@@ -204,15 +245,9 @@ def print_subplot(perturb,x_test,y_test,preds,x_test_adv,value_preds_adv):
           
 
 def save_read(x,classifier,transf_init):
-  '''
-  x: img ndarray 3xnxm
-  classifier: model trained
-  '''
-  import cv2
-  from google.colab.patches import cv2_imshow
-
   print("valori img originale:")
-  print(test_average(classifier,torch.Tensor(x).unsqueeze_(0),transf_init))
+  _,p,_=test_average(classifier,torch.Tensor(x).unsqueeze_(0),transf_init)
+  print(p)
   x=x.transpose(1,2,0)*255
   #plt.imsave('prova.bmp',x)
   cv2.imwrite('prova.png',x)
@@ -225,7 +260,8 @@ def save_read(x,classifier,transf_init):
   #plt.imshow(prova_arr*255)
   #cv2_imshow(x*255)
   print("valori dopo salvataggio/lettura:")
-  print(test_average(classifier,torch.Tensor(x.transpose(2,0,1)).unsqueeze_(0),transf_init))
+  _,p,_=test_average(classifier,torch.Tensor(x.transpose(2,0,1)).unsqueeze_(0),transf_init)
+  print(p)
           
           
 def accuracy_class(class_str,pd_class):
