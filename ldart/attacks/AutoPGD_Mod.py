@@ -344,7 +344,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
         self.verbose = verbose
         self._check_params()
 
-    def generate(self, x: np.ndarray, y: Optional[np.ndarray] = None, **kwargs) -> np.ndarray:
+    def generate(self,mask_mod, x: np.ndarray, y: Optional[np.ndarray] = None, enh=False, **kwargs) -> np.ndarray:
         """
         Generate adversarial samples and return them in an array.
         :param x: An array with the original inputs.
@@ -373,10 +373,9 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
             )
 
         x_adv = x.astype(ART_NUMPY_DTYPE)
-        
         size_init=np.array(x.shape[2:4])
-        transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)        
-        
+        transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
+
         #questo for serve per i riavvi random, quindi se l'immagine non è spoof spoof è inutile
         for t in trange(max(1, self.nb_random_init), desc="AutoPGD - restart", disable=not self.verbose):
             # Determine correctly predicted samples
@@ -416,7 +415,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
             #recap: se non è spoof spoof uso break per uscire dal for e restituisco l'immagine originale, altrimenti continuo e faccio resize dell'immagine
             if t==0:
               x_adv=transf_resize(torch.Tensor(x_adv))
-              mask_mod=compute_mask(x_adv)
+              #mask_mod=compute_mask(x_adv)
               x_adv=np.array(x_adv)
 
             x_robust = x_adv
@@ -453,6 +452,9 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
               #print("x_robust dopo perturbazione proiettata")
               #cv2_imshow(x_robust[0].transpose(1,2,0)*255)
             # Compute perturbation with implicit batching
+              
+              if enh: x_robust=enhanc(x_robust,mask_mod)
+            
             #for per ogni batch (viene eseguito una volta)
             for batch_id in trange(
                 int(np.ceil(x_robust.shape[0] / float(self.batch_size))),
@@ -485,7 +487,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                 for k_iter in trange(self.max_iter, desc="AutoPGD - iteration", leave=False, disable=not self.verbose):
                     # Get perturbation, use small scalar to avoid division by 0
                     tol = 10e-8
-
+                    #cv2_imshow(x_k[0].transpose(1,2,0)*255)
                     # Get gradient wrt loss; invert it if attack is targeted
                     grad = self.estimator.loss_gradient(np.array(trans_norm(torch.Tensor(x_k))), y_batch) * (1 - 2 * int(self.targeted))
 
@@ -578,6 +580,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
 
                         #f_k_p_1 è il valore della loss function e quantifica di quanto sbaglia il classificatore, quindi se è 0 interrompo le iterazioni e cambio punto di partenza
                         
+                        if enh:  x_k_p_1=enhanc(x_k_p_1,mask_mod)
+                        
                         pred,value,_=test_average(self.estimator,torch.Tensor(x_k_p_1),transf_orig)
                         if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
                           sample_is_not_robust=False
@@ -619,6 +623,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                             x_k_m_1 = x_k
                             x_k = x_k_p_1.copy()
 
+                if enh: x_k=enhanc(x_k,mask_mod)
+                
                 pred,value,_=test_average(self.estimator,torch.Tensor(x_k),transf_orig)
                 #y_pred_adv_k = self.estimator.predict(x_k)
                 if self.targeted:
