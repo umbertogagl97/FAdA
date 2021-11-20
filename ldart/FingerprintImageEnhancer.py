@@ -497,7 +497,7 @@ class FingerprintImageEnhancer(object):
 
         self._binim = newim < self.ridge_filter_thresh
 
-    def enhance(self, img, resize=True, size: Optional[int]=350):
+    def enhance(self, img, resize=False, size: Optional[int]=350):
         # main function to enhance the image.
         # calls all other subroutines
 
