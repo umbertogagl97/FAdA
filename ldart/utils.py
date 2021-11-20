@@ -12,7 +12,7 @@ from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import random
 from torchvision import datasets, models, transforms
-
+from typing import Optional
 
 import torch.optim as optim
 
