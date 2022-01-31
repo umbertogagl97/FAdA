@@ -261,9 +261,13 @@ def print_subplot(perturb,x_test,y_test,preds,x_test_adv,value_preds_adv):
           
 
 def save_read(x,classifier,transf_init):
-  print("valori img originale:")
-  _,p,_=test_average(classifier,torch.Tensor(x).unsqueeze_(0),transf_init)
-  print(p)
+  '''
+  x: 3xnxm ndarray
+  classifier
+  transf_init
+  return: probabilities before & after
+  '''
+  _,p_before,_=test_average(classifier,torch.Tensor(x).unsqueeze_(0),transf_init)
   x=x.transpose(1,2,0)*255
   #plt.imsave('prova.bmp',x)
   cv2.imwrite('prova.png',x)
@@ -275,9 +279,8 @@ def save_read(x,classifier,transf_init):
   #x=plt.imread('prova.png')/255
   #plt.imshow(prova_arr*255)
   #cv2_imshow(x*255)
-  print("valori dopo salvataggio/lettura:")
-  _,p,_=test_average(classifier,torch.Tensor(x.transpose(2,0,1)).unsqueeze_(0),transf_init)
-  print(p)
+  _,p_after,_=test_average(classifier,torch.Tensor(x.transpose(2,0,1)).unsqueeze_(0),transf_init)
+  return p_before,p_after
           
           
 def accuracy_class(class_str,pd_class):
