@@ -23,7 +23,7 @@ from skimage.morphology import (erosion, dilation, closing, opening,
                                 area_closing, area_opening, ball)
 from skimage.util import random_noise
 
-from FingerprintImageEnhancer import *
+from fada.FingerprintImageEnhancer import *
 
 #import time
 #import os
