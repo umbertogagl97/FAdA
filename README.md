@@ -4,7 +4,7 @@ FAdA is based on Adversarial Robustness Toolbox (ART) and it is specialized in a
 
 ## Install fada on colab
 ###### !pip install git+https://github.com/umbertogagl97/FAdA.git
-###### from ldart import ...
+###### see examples/attacco_scanner for more informations
 
 ## fada
 The main directory that contains:
