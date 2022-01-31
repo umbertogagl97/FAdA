@@ -32,6 +32,7 @@ class DeepFool_mod(EvasionAttack):
         "nb_grads",
         "class_target",
         "confidence",
+        "random_mask",
         "max_over",
         "batch_size",
         "verbose",
@@ -46,6 +47,7 @@ class DeepFool_mod(EvasionAttack):
         nb_grads: int = 10,
         class_target = 0,
         confidence = 0.7,
+        random_mask = False,
         max_over = 1,
         batch_size: int = 1,
         verbose: bool = True,
@@ -58,7 +60,8 @@ class DeepFool_mod(EvasionAttack):
         :param nb_grads: The number of class gradients (top nb_grads w.r.t. prediction) to compute. This way only the
                          most likely classes are considered, speeding up the computation.
         :param class_target: classe da far predire.
-        :param confidence: probabilità minima con la quale predire class_target                         
+        :param confidence: probabilità minima con la quale predire class_target 
+        :param random_mask:                         
         :param max_over: numero massimo di volte che può applicare il parametro overshoot
         :param batch_size: Batch size
         :param verbose: Show progress bars.
@@ -69,6 +72,7 @@ class DeepFool_mod(EvasionAttack):
         self.nb_grads = nb_grads
         self.class_target=class_target
         self.confidence=confidence
+        self.random_mask=random_mask
         self.batch_size = batch_size
         self.max_over = max_over
         self.verbose = verbose
@@ -80,7 +84,7 @@ class DeepFool_mod(EvasionAttack):
                 "the adversarial example."
             )
 
-    def generate(self, x: np.ndarray, y: Optional[np.ndarray] = None, **kwargs) -> np.ndarray:
+    def generate(self, mask_mod, x: np.ndarray, y: Optional[np.ndarray] = None, enh=False, **kwargs) -> np.ndarray:
         """
         Generate adversarial samples and return them in an array.
         :param x: An array with the original inputs to be attacked.
@@ -89,11 +93,11 @@ class DeepFool_mod(EvasionAttack):
         """
         x_adv = x.astype(ART_NUMPY_DTYPE)
 
-        #preds = self.estimator.predict(x, batch_size=self.batch_size)
-        
         size_init=np.array(x.shape[2:4])
         transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
-        
+
+        #preds = self.estimator.predict(x, batch_size=self.batch_size)
+
         class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(x_adv),transf_orig)
         preds=np.array(preds).reshape(1,2)
 
@@ -129,7 +133,7 @@ class DeepFool_mod(EvasionAttack):
 
         if active: 
             x_adv=transf_resize(torch.Tensor(x_adv))
-            mask_mod=compute_mask(x_adv)
+            #mask_mod=compute_mask(x_adv)
             x_adv=np.array(x_adv)
 
             x_init=transf_resize(torch.Tensor(x.astype(ART_NUMPY_DTYPE)))
@@ -163,7 +167,10 @@ class DeepFool_mod(EvasionAttack):
             while active==True and current_step < self.max_iter:
                 # Compute difference in predictions and gradients only for selected top predictions
                 labels_indices = sorter[np.searchsorted(labels_set, class_pred, sorter=sorter)]
-                grad_diff = (grd - grd[np.arange(len(grd)), labels_indices][:, None])*mask_mod
+                #rand_mask=rand_roi(mask_mod)
+                if self.random_mask: m=rand_roi(mask_mod)
+                else: m=mask_mod.copy()
+                grad_diff = (grd - grd[np.arange(len(grd)), labels_indices][:, None])*m
                 f_diff = preds[:,labels_set] - preds[np.arange(len(preds)), labels_indices][:, None]
 
                 # Choose coordinate and compute perturbation
@@ -199,7 +206,9 @@ class DeepFool_mod(EvasionAttack):
                     )
                 else:
                     batch += r_var
+                
                 batch=batch.astype(np.single)
+                if enh: batch=enhanc(batch,mask_mod)
                 # Recompute prediction for new x
                 class_pred_i,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch),transf_orig)
                 preds=np.array(preds).reshape(1,2)
@@ -230,6 +239,8 @@ class DeepFool_mod(EvasionAttack):
             while active and ov_it<self.max_over:
               x_adv2 = (1 + self.epsilon) * (batch - x_init)            
               batch = x_init + x_adv2
+              for l in range(3):
+                batch[0,l,:,:]=np.where(mask_mod==0,1,batch[0,l,:,:])
               if self.estimator.clip_values is not None:
                   np.clip(
                       batch,
@@ -237,6 +248,7 @@ class DeepFool_mod(EvasionAttack):
                       self.estimator.clip_values[1],
                       out=batch,
                   )   
+              if enh: batch=enhanc(batch,mask_mod)
               class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch),transf_orig)
               if ((class_pred==np.argmax(y, axis=1)) and (class_pred!= self.class_target)):
                   active=True
@@ -246,11 +258,12 @@ class DeepFool_mod(EvasionAttack):
               ov_it+=1
               
             x_adv=batch
-              
+        '''      
         logger.info(
             "Success rate of DeepFool attack: %.2f%%",
             100 * compute_success(self.estimator, x, y, x_adv, batch_size=self.batch_size),
         )
+        '''
         return x_adv
 
     def _check_params(self) -> None:
