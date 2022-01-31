@@ -23,6 +23,8 @@ from skimage.morphology import (erosion, dilation, closing, opening,
                                 area_closing, area_opening, ball)
 from skimage.util import random_noise
 
+from FingerprintImageEnhancer import *
+
 #import time
 #import os
 #import shutil
@@ -54,15 +56,13 @@ def compute_transf_init(size_init):
   return transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
 
 
-def enhanc(img,mask,size_out : Optional[int]=0): 
+def enhanc(img,mask,size_out : Optional[int]=0):
   '''
   img: ndarray 1x3xnxm
   mask: ndarray nxm (same dim of size_out)
   size_out: (int) effettua un resize dell'immagine prima dell'enhancement (se 0 dà in uscita l'img con le stesse dim dell'input)
   return: img_en 1x3xnxm
   '''
-
-  from FingerprintImageEnhancer import *
 
   res=False
   #res=True
