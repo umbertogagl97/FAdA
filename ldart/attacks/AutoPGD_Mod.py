@@ -5,7 +5,7 @@ from typing import Optional, Union, TYPE_CHECKING
 import numpy as np
 from tqdm.auto import trange
 
-from ldart.utils import *
+from fada.utils import *
 
 from art.config import ART_NUMPY_DTYPE
 from art.attacks.attack import EvasionAttack
