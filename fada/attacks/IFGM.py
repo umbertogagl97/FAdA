@@ -16,7 +16,7 @@ from art.utils import (
     projection,
     check_and_transform_label_format,
 )
-from ldart.utils import *
+from fada.utils import *
 
 if TYPE_CHECKING:
     from art.utils import CLASSIFIER_LOSS_GRADIENTS_TYPE
