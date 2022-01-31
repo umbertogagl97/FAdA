@@ -1,0 +1,4 @@
+If you don't want to build the liveness detector from scratch, you need to upload the data to your Google Drive.
+Follow links to data:
+dataset fingerprint livdet: https://drive.google.com/drive/folders/1e9-B7wlfSf5CNfZDsOfDP3Twj6rj46UU?usp=sharing
+weights network: https://drive.google.com/drive/folders/1kxUI3vim6O8ZFRw_ZvHPxaZgG0ulbdkE?usp=sharing
