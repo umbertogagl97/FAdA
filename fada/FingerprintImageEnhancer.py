@@ -11,6 +11,7 @@ from scipy import signal
 from scipy import ndimage
 import math
 import scipy
+from typing import Optional
 
 class FingerprintImageEnhancer(object):
     def __init__(self, ridge_segment_blksze=16, ridge_segment_thresh=0.1, gradient_sigma=1, block_sigma=7, orient_smooth_sigma=7,
