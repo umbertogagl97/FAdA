@@ -33,7 +33,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
         "targeted",
         "nb_random_init",
         "class_target",
-        "confidence",        
+        "confidence", 
+        "random_mask",       
         "batch_size",
         "loss_type",
         "verbose",
@@ -51,7 +52,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
         targeted: bool = False,
         nb_random_init: int = 5,
         class_target = 0,
-        confidence = 0.7,        
+        confidence = 0.7,
+        random_mask = False,        
         batch_size: int = 32,
         loss_type: Optional[str] = None,
         verbose: bool = True,
@@ -67,7 +69,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
         :param nb_random_init: Number of random initialisations within the epsilon ball. For num_random_init=0
             starting at the original input.
         :param class_target: classe da far predire.
-        :param confidence: probabilità minima con la quale predire class_target.            
+        :param confidence: probabilità minima con la quale predire class_target.     
+        :param random_mask: generate random mask from initial mask       
         :param batch_size: Size of the batch on which adversarial samples are generated.
         :param loss_type: Defines the loss to attack. Available options: None (Use loss defined by estimator),
             "cross_entropy", or "difference_logits_ratio"
@@ -338,7 +341,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
         self.targeted = targeted
         self.nb_random_init = nb_random_init
         self.class_target=class_target
-        self.confidence=confidence        
+        self.confidence=confidence     
+        self.random_mask=random_mask   
         self.batch_size = batch_size
         self.loss_type = loss_type
         self.verbose = verbose
@@ -380,20 +384,6 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
         for t in trange(max(1, self.nb_random_init), desc="AutoPGD - restart", disable=not self.verbose):
             # Determine correctly predicted samples
             #y_pred = self.estimator.predict(x_adv)
-            
-            pred,value,_=test_average(self.estimator,torch.Tensor(x_adv),transf_orig) #preds è già la classe finale mentre y_pred contiene i due valori
-            
-            if self.targeted:
-                sample_is_robust = np.argmax(y_pred, axis=1) != np.argmax(y, axis=1)
-            elif not self.targeted:
-                #sample_is_robust = np.argmax(y_pred, axis=1) == np.argmax(y, axis=1)
-                
-                #mod
-                if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
-                  sample_is_robust=True
-                elif ((pred!=np.argmax(y, axis=1)) and (pred== self.class_target) and (np.max(value)<self.confidence)):  
-                  sample_is_robust=True
-                else:  sample_is_robust=False
 
                 #print("preds=label e preds=spoof")
               
@@ -407,10 +397,6 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
             #print("y: "+str(y))
             #print("pred: "+str(preds))
             #print("sampleisrobust: "+str(sample_is_robust))
-            
-            if sample_is_robust == False:
-                #vedi se questo break blocca il for esterno, se non lo blocca è inutile, ma dovrebbe farlo
-                break
             
             #recap: se non è spoof spoof uso break per uscire dal for e restituisco l'immagine originale, altrimenti continuo e faccio resize dell'immagine
             if t==0:
@@ -491,6 +477,9 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                     # Get gradient wrt loss; invert it if attack is targeted
                     grad = self.estimator.loss_gradient(np.array(trans_norm(torch.Tensor(x_k))), y_batch) * (1 - 2 * int(self.targeted))
 
+                    if self.random_mask: m=rand_roi(mask_mod)
+                    else: m=mask_mod.copy()
+
                     # Apply norm bound
                     if self.norm in [np.inf, "inf"]:
                         grad = np.sign(grad)
@@ -509,7 +498,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                     #    perturbation = perturbation * (mask.astype(ART_NUMPY_DTYPE))
                     #print("pert prima mask")
                     #cv2_imshow(perturbation[0].transpose(1,2,0)*255)
-                    perturbation = perturbation * (mask_mod.astype(ART_NUMPY_DTYPE))
+                    perturbation = perturbation * (m.astype(ART_NUMPY_DTYPE))
                     #print("pert dopo mask")
                     #cv2_imshow(perturbation[0].transpose(1,2,0)*255)
                     perturbation = 0.2989 * perturbation[0,0,:,:] + 0.5870 * perturbation[0,1,:,:] + 0.1140 * perturbation[0,2,:,:]
@@ -581,7 +570,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                         #f_k_p_1 è il valore della loss function e quantifica di quanto sbaglia il classificatore, quindi se è 0 interrompo le iterazioni e cambio punto di partenza
                         
                         if enh:  x_k_p_1=enhanc(x_k_p_1,mask_mod)
-                        
+            
                         pred,value,_=test_average(self.estimator,torch.Tensor(x_k_p_1),transf_orig)
                         if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
                           sample_is_not_robust=False
@@ -628,7 +617,7 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                 pred,value,_=test_average(self.estimator,torch.Tensor(x_k),transf_orig)
                 #y_pred_adv_k = self.estimator.predict(x_k)
                 if self.targeted:
-                    sample_is_not_robust_k = np.invert(np.argmax(y_pred_adv_k, axis=1) != np.argmax(y_batch, axis=1))
+                    sample_is_not_robust_k = np.invert(pred != np.argmax(y_batch, axis=1))
                 elif not self.targeted:
                     #sample_is_not_robust_k = np.invert(preds == np.argmax(y_batch, axis=1))
                     if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
@@ -683,4 +672,4 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
             if self.confidence <=0 or self.confidence >1:
               raise ValueError("confidence deve essere compreso tra 0 e 1")
         else: 
-          raise ValueError("confidence deve essere float")
+          raise ValueError("confidence deve essere float")            
