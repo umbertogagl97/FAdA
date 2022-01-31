@@ -39,6 +39,7 @@ class IterativeFastGradientMethod(EvasionAttack):
         "class_target",
         "max_iter",
         "confidence",
+        "random_mask",
         "tensor_board",
     ]
     _estimator_requirements = (BaseEstimator, LossGradientsMixin)
@@ -52,6 +53,7 @@ class IterativeFastGradientMethod(EvasionAttack):
         class_target: int = 0,
         max_iter: int = 10,
         confidence: float = 0.6, 
+        random_mask = False,
         tensor_board: Union[str, bool] = False,
     ) -> None:
         """
@@ -63,19 +65,21 @@ class IterativeFastGradientMethod(EvasionAttack):
         :param class_target: classe da far predire.
         :param max_iter: numero massimo di iterazioni
         :param confidence: probabilità minima con la quale predire class_target
+        :param random_mask: 
         :param tensor_board: Activate summary writer for TensorBoard: Default is `False` and deactivated summary writer.
                              If `True` save runs/CURRENT_DATETIME_HOSTNAME in current directory. Provide `path` in type
                              `str` to save in path/CURRENT_DATETIME_HOSTNAME.
                              Use hierarchical folder structure to compare between runs easily. e.g. pass in ‘runs/exp1’,
                              ‘runs/exp2’, etc. for each new experiment to compare across them.
         """
-        super().__init__(estimator=estimator, tensor_board=tensor_board)
+        super().__init__(estimator=estimator)
         self.norm = norm
         self.eps = eps
         self.eps_step = eps_step
         self.class_target=class_target
         self.max_iter=max_iter
         self.confidence=confidence
+        self.random_mask=random_mask
         self._project = True
         IterativeFastGradientMethod._check_params(self)
 
@@ -129,7 +133,11 @@ class IterativeFastGradientMethod(EvasionAttack):
                 #sys.stdout.write("\rIter: {0}/{1}".format(iter,self.max_iter))
                 #sys.stdout.flush()
                 #calcolo perturbazione
-                perturbation = self._compute_perturbation(adv_x, y, mask_mod) #[-1,1]
+                if self.random_mask: m=rand_roi(mask_mod)
+                else: m=mask_mod.copy
+                #rand_mask=rand_roi(mask_mod)
+                #cv2_imshow(rand_mask*255)
+                perturbation = self._compute_perturbation(adv_x, y, m) #[-1,1]
                 
                 #trasformazione in gray
                 r, g, b = perturbation[0,0,:,:],perturbation[0,1,:,:],perturbation[0,2,:,:]
@@ -137,7 +145,14 @@ class IterativeFastGradientMethod(EvasionAttack):
                 
                 current_x = self._apply_perturbation(adv_x, perturbation, current_eps)
                 adv_x=current_x
-                
+                #cv2_imshow(current_x[0].transpose(1,2,0)*255)
+                '''
+                print("prima")
+                cv2_imshow(current_x[0].transpose(1,2,0)*255)
+                adv_x=enhanc(current_x,[224,224],mask_mod)
+                print("dopo")
+                cv2_imshow(adv_x[0].transpose(1,2,0)*255)
+                '''
                 #if iter in list_en: adv_x=enhanc(adv_x,mask_mod)
                 if enh:
                   #print("prima")
@@ -146,7 +161,7 @@ class IterativeFastGradientMethod(EvasionAttack):
                   #print("dopo")
                   #cv2_imshow(adv_x[0].transpose(1,2,0)*255)                  
                 pred,values,_=test_average(self.estimator,torch.Tensor(adv_x),transf_orig)
-                
+                #print(values[0])
                 # If targeted active check to see whether we have hit the target, otherwise head to anything but
                 if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
                   active=True
@@ -162,7 +177,7 @@ class IterativeFastGradientMethod(EvasionAttack):
 
         return adv_x
 
-    def generate(self, mask, x: np.ndarray, y: Optional[np.ndarray] = None, enh: Optional[bool] = False, **kwargs) -> np.ndarray:
+    def generate(self, mask_mod, x: np.ndarray, y: Optional[np.ndarray] = None, enh: Optional[bool] = False, **kwargs) -> np.ndarray:
         """Generate adversarial samples and return them in an array.
         :param x: An array with the original inputs.
         :param y: Target values (class labels) one-hot-encoded of shape (nb_samples, nb_classes) or indices of shape
@@ -184,7 +199,7 @@ class IterativeFastGradientMethod(EvasionAttack):
            y = get_labels_np_array(self.estimator.predict(x))  # type: ignore
 
         # Return adversarial examples computed with minimal perturbation if option is active
-        adv_x_best = self._minimal_perturbation(x, y, mask, enh)
+        adv_x_best = self._minimal_perturbation(x, y, mask_mod, enh)
         
         return adv_x_best
 
@@ -264,6 +279,7 @@ class IterativeFastGradientMethod(EvasionAttack):
         # Apply mask
         if mask is not None:
             grad = np.where(mask == 0.0, 0.0, grad)
+            #grad = np.where(mask2 == 1,0, grad)
 
         # Apply norm bound
         def _apply_norm(grad, object_type=False):
