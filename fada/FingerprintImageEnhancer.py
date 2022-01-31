@@ -14,8 +14,8 @@ import scipy
 from typing import Optional
 
 class FingerprintImageEnhancer(object):
-    def __init__(self, ridge_segment_blksze=16, ridge_segment_thresh=0.1, gradient_sigma=1, block_sigma=7, orient_smooth_sigma=7,
-                 ridge_freq_blksze=38, ridge_freq_windsze=5, min_wave_length=5, max_wave_length=15, kx=0.65, ky=0.65, angleInc=3.0, ridge_filter_thresh=-3):
+    def __init__(self, ridge_segment_blksze=30, ridge_segment_thresh=0.1, gradient_sigma=1, block_sigma=7, orient_smooth_sigma=7,
+                 ridge_freq_blksze=38, ridge_freq_windsze=5, min_wave_length=6, max_wave_length=15, kx=0.65, ky=0.65, angleInc=3.0, ridge_filter_thresh=-3):
         self.ridge_segment_blksze = ridge_segment_blksze
         self.ridge_segment_thresh = ridge_segment_thresh
         self.gradient_sigma = gradient_sigma
@@ -87,6 +87,7 @@ class FingerprintImageEnhancer(object):
         # pk at csse uwa edu au
         # http://www.csse.uwa.edu.au/~pk
         rows, cols = img.shape
+
         im = self.__normalise(img, 0, 1)  # normalise to get zero mean and unit standard deviation
 
         new_rows = np.int(self.ridge_segment_blksze * np.ceil((np.float(rows)) / (np.float(self.ridge_segment_blksze))))
@@ -495,23 +496,26 @@ class FingerprintImageEnhancer(object):
             img_block = im[r - sze:r + sze + 1][:, c - sze:c + sze + 1]
 
             newim[r][c] = np.sum(img_block * gabor_filter[int(orientindex[r][c]) - 1])
-
+            
         self._binim = newim < self.ridge_filter_thresh
 
-    def enhance(self, img, resize=False, size: Optional[int]=350):
+    def enhance(self, img, resize=False, size: Optional[list]=350):
         # main function to enhance the image.
         # calls all other subroutines
 
         if (len(img.shape) > 2):  # convert image into gray if necessary
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         if(resize):
-            rows, cols = np.shape(img)
-            aspect_ratio = np.double(rows) / np.double(cols)
+            if size==350:
+              rows, cols = np.shape(img)
+              aspect_ratio = np.double(rows) / np.double(cols)
 
-            new_rows = size                     # randomly selected number
-            new_cols = new_rows / aspect_ratio
+              new_rows = size                     # randomly selected number
+              new_cols = new_rows / aspect_ratio
 
-            img = cv2.resize(img, (np.int(new_cols), np.int(new_rows)),cv2.INTER_NEAREST)
+              img = cv2.resize(img, (np.int(new_cols), np.int(new_rows)),cv2.INTER_NEAREST)
+            else:
+              img = cv2.resize(img, (np.int(size[1]), np.int(size[0])),cv2.INTER_NEAREST)
 
         self.__ridge_segment(img)   # normalise the image and find a ROI
         self.__ridge_orient()       # compute orientation image
