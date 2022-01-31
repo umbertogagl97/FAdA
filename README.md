@@ -1,9 +1,9 @@
-# LivDet_art
-LiveDet_ART (LDART) is a Python library for Machine Learning Security.
-LDART is based on Adversarial Robustness Toolbox (ART) and it is specialized in attacks to Fingerprint Liveness Detection.
+# FAda
+Fingerprint Adversarial Attacks is a Python library for Machine Learning Security.
+FAdA is based on Adversarial Robustness Toolbox (ART) and it is specialized in attacks to Fingerprint Liveness Detection.
 
-## Install lvart on colab
-###### !pip install git+https://github.com/umbertogagl97/LivDet_art.git
+## Install fada on colab
+###### !pip install git+https://github.com/umbertogagl97/FAdA.git
 ###### from ldart import ...
 
 ## ldart
