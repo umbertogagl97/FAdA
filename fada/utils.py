@@ -23,8 +23,6 @@ from skimage.morphology import (erosion, dilation, closing, opening,
                                 area_closing, area_opening, ball)
 from skimage.util import random_noise
 
-from fada.FingerprintImageEnhancer import *
-
 #import time
 #import os
 #import shutil
@@ -36,7 +34,7 @@ import sys
 from torchvision.transforms.functional import InterpolationMode
 
 #from torch.utils.data import TensorDataset, DataLoader
-
+from fada.FingerprintImageEnhancer import *
 
 #----------------------------------------------------------------transforms
 
