@@ -18,6 +18,11 @@ import torch.optim as optim
 
 import torchvision
 
+import os
+from skimage.morphology import (erosion, dilation, closing, opening,
+                                area_closing, area_opening, ball)
+from skimage.util import random_noise
+
 #import time
 #import os
 #import shutil
@@ -90,10 +95,11 @@ def enhanc(img,mask,size_out : Optional[int]=0):
   return img
 
 
-def compute_mask(img,n_contours=3):
+def compute_mask(img,dim_contours=8,n_rect=1):
   '''
   img: tensor 1x3xnxm
-  n_contours: numero di contorni da tracciare nel passo intermedio (consigliati: 3 per img 224x224, 6 per img 500x500)
+  dim_contours: larghezza dei contorni da tracciare (consigliato 10 in generale e 8 per Latex)
+  n_rect: dimensione rect di getStructuringElement (consigliato 2 in generale e 1 per Latex)
   '''
   #img iniziale [0,1]
   img=np.array(img[0])
@@ -110,25 +116,34 @@ def compute_mask(img,n_contours=3):
   #calcola immagine binaria
   ret, imgf = cv2.threshold(gray, 0,255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
 
-  image_contours = np.zeros((imgf.shape[1],
-                            imgf.shape[0]),
+  # Morph open to remove noise
+  kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (n_rect,n_rect))
+  imgf = cv2.morphologyEx(imgf, cv2.MORPH_OPEN, kernel, iterations=1)
+  #cv2_imshow(imgf)
+  image_contours = np.zeros((imgf.shape[0],
+                            imgf.shape[1]),
                             np.uint8)
 
-  image_binary = np.zeros((imgf.shape[1],
-                          imgf.shape[0]),
+  image_binary = np.zeros((imgf.shape[0],
+                          imgf.shape[1]),
                           np.uint8)
 
   #cerca i contorni nell'immagine binaria
   contours =cv2.findContours(imgf, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
+
   cv2.drawContours(image_contours,
                       contours, -1,
-                      (255,255), n_contours)
+                      (255,255), dim_contours) 
+  
+
+  #image_contours=cv2.GaussianBlur(image_contours, (3,3), 0)
   #cv2_imshow(image_contours)
   contours = cv2.findContours(image_contours, cv2.RETR_LIST,
                             cv2.CHAIN_APPROX_SIMPLE)[0]
   #disegna solo il contorno più esterno
   cv2.drawContours(image_binary, [max(contours, key = cv2.contourArea)],
                   -1, (255, 255),-1)
+  #cv2_imshow(image_binary)
   #restituisce immagine [0,1]
   return image_binary/255
 
@@ -294,5 +309,85 @@ def print_acc(pd_preds):
   print("\nAccuracy: {0}".format(accuracy))
   print("Shape dataframe: {0}".format(pd_preds.shape))
           
+def clipped_zoom(img, zoom_factor, **kwargs):
+    '''
+    img: ndarray nxmx3
+    zoom_factor: compreso in (0,1), se <1 zoom_out, se >1 zoom_in
+    '''
+    h, w = img.shape[:2]
+
+    # For multichannel images we don't want to apply the zoom factor to the RGB
+    # dimension, so instead we create a tuple of zoom factors, one per array
+    # dimension, with 1's for any trailing dimensions after the width and height.
+    zoom_tuple = (zoom_factor,) * 2 + (1,) * (img.ndim - 2)
+
+    # Zooming out
+    if zoom_factor < 1:
+
+        # Bounding box of the zoomed-out image within the output array
+        zh = int(np.round(h * zoom_factor))
+        zw = int(np.round(w * zoom_factor))
+        top = (h - zh) // 2
+        left = (w - zw) // 2
+
+        # Zero-padding
+        out = np.ones_like(img)*255
+        out[top:top+zh, left:left+zw] = zoom(img, zoom_tuple, **kwargs)
+
+    # Zooming in
+    elif zoom_factor > 1:
+
+        # Bounding box of the zoomed-in region within the input array
+        zh = int(np.round(h / zoom_factor))
+        zw = int(np.round(w / zoom_factor))
+        top = (h - zh) // 2
+        left = (w - zw) // 2
+
+        out = zoom(img[top:top+zh, left:left+zw], zoom_tuple, **kwargs)
+
+        # `out` might still be slightly larger than `img` due to rounding, so
+        # trim off any extra pixels at the edges
+        trim_top = ((out.shape[0] - h) // 2)
+        trim_left = ((out.shape[1] - w) // 2)
+        out = out[trim_top:trim_top+h, trim_left:trim_left+w]
+
+    # If zoom_factor == 1, just return the input array
+    else:
+        out = img
+    return out      
           
-          
+def rand_roi(m,a=1,verbose=False):
+  '''
+  param m: mask init nxm ndarray
+  param a: fattore con cui dividere raggio originale
+  '''
+    
+  from scipy import ndimage
+  from scipy.spatial import distance
+  
+  center=ndimage.measurements.center_of_mass(m)
+  center=(int(center[0]),int(center[1]))
+  
+
+  max_pos=ndimage.measurements.maximum_position(m)
+  max_pos=(int(max_pos[0]),int(max_pos[1]))
+
+  radius=int(distance.euclidean(center,max_pos))
+  
+  f=np.argwhere(m==1)
+  rand_cent=f[np.random.randint(0,f.shape[0],1)][0]
+  black_img=np.zeros([m.shape[0],m.shape[1]])
+  random_roi=cv2.circle(black_img,(rand_cent[1],rand_cent[0]),int(radius/a),255,-1)
+  random_roi*=m
+  if cv2.countNonZero(random_roi) == 0:
+      print("Image is black")
+      random_roi=m.copy()
+
+  if verbose: 
+    print('center: ',center)
+    print('max_pos: ',max_pos)
+    print('radius: ',radius)
+    cv2_imshow(random_roi*255)
+  return random_roi
+
+
