@@ -6,7 +6,7 @@ from typing import Optional, TYPE_CHECKING
 import numpy as np
 from tqdm.auto import trange
 
-from ldart.utils import *
+from fada.utils import *
 
 from art.config import ART_NUMPY_DTYPE
 from art.estimators.estimator import BaseEstimator
