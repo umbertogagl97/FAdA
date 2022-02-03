@@ -351,18 +351,15 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
     def generate(self,mask_mod, x: np.ndarray, y: Optional[np.ndarray] = None, enh=False, **kwargs) -> np.ndarray:
         """
         Generate adversarial samples and return them in an array.
+        :param mask_mod:
         :param x: An array with the original inputs.
         :param y: Target values (class labels) one-hot-encoded of shape `(nb_samples, nb_classes)` or indices of shape
                   (nb_samples,). Only provide this parameter if you'd like to use true labels when crafting adversarial
                   samples. Otherwise, model predictions are used as labels to avoid the "label leaking" effect
                   (explained in this paper: https://arxiv.org/abs/1611.01236). Default is `None`.
-        :param mask: An array with a mask broadcastable to input `x` defining where to apply adversarial perturbations.
-                     Shape needs to be broadcastable to the shape of x and can also be of the same shape as `x`. Any
-                     features for which the mask is zero will not be adversarially perturbed.
-        :type mask: `np.ndarray`
+        :param enh:          
         :return: An array holding the adversarial examples.
         """
-        mask = kwargs.get("mask")
 
         y = check_and_transform_label_format(y, self.estimator.nb_classes)
 
@@ -380,68 +377,41 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
         size_init=np.array(x.shape[2:4])
         transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
 
-        #questo for serve per i riavvi random, quindi se l'immagine non è spoof spoof è inutile
+        #random_init loop
         for t in trange(max(1, self.nb_random_init), desc="AutoPGD - restart", disable=not self.verbose):
-            # Determine correctly predicted samples
-            #y_pred = self.estimator.predict(x_adv)
-
-                #print("preds=label e preds=spoof")
-              
-              
-                #print("preds=label, preds=live e confidence<0.6")
-                
-              
-
-            #sample_is_robust è vettore di booleani, indica se l'attacco deve essere eseguito (True), ovvero se il modello predice bene
-            
-            #print("y: "+str(y))
-            #print("pred: "+str(preds))
-            #print("sampleisrobust: "+str(sample_is_robust))
-            
-            #recap: se non è spoof spoof uso break per uscire dal for e restituisco l'immagine originale, altrimenti continuo e faccio resize dell'immagine
+            #in the first iteration save initial values
             if t==0:
               x_adv=transf_resize(torch.Tensor(x_adv))
-              #mask_mod=compute_mask(x_adv)
               x_adv=np.array(x_adv)
 
             x_robust = x_adv
             y_robust = y
             x_init = np.array(transf_resize(torch.Tensor(x)))
-            #print("x_robust inizio")
-            #cv2_imshow(x_robust[0].transpose(1,2,0)*255)
-           
-            if self.nb_random_init!=0:
-              n = x_robust.shape[0] #numero di immagini (1)
+            
+            #random perturbation
+            if self.nb_random_init>0:
+              n = x_robust.shape[0]
               m = np.prod(x_robust.shape[1:]).item()
+                
               random_perturbation = (
                   random_sphere(n, m, self.eps, self.norm).reshape(x_robust.shape).astype(ART_NUMPY_DTYPE)
               )*(mask_mod.astype(ART_NUMPY_DTYPE))
-              #dovresti trasformare random_pert in gray e applicare anche la maschera
               random_perturbation = 0.2989 * random_perturbation[0,0,:,:] + 0.5870 * random_perturbation[0,1,:,:] + 0.1140 * random_perturbation[0,2,:,:]
               for i in range(3):
                 x_robust[0,i,:,:] = x_robust[0,i,:,:] + random_perturbation
-              #x_robust = x_robust + random_perturbation #applica una perturbazione random, penso per generare un nuovo x di partenza diverso da x_init
-
-              #effettua clipping dei valori
               if self.estimator.clip_values is not None:
                   clip_min, clip_max = self.estimator.clip_values
                   x_robust = np.clip(x_robust, clip_min, clip_max)
-              #print("x_robust dopo random_perturbation")
-              #cv2_imshow(x_robust[0].transpose(1,2,0)*255)
-              #aggiusta la perturbazione con projection, infatti le passa x_robust-x_init che sarebbe la perturbazione totale applicata da x_init nelle varie iterazioni
               perturbation = projection(x_robust - x_init, self.eps, self.norm)#*(mask_mod.astype(ART_NUMPY_DTYPE))
               perturbation = 0.2989 * perturbation[0,0,:,:] + 0.5870 * perturbation[0,1,:,:] + 0.1140 * perturbation[0,2,:,:]
               for i in range(3):
                 x_robust[0,i,:,:] = x_init[0,i,:,:] + perturbation
-              #somma la perturbazione aggiustata a x_init per generare un nuovo x_robust e ricominciare
-              #x_robust = x_init + perturbation
-              #print("x_robust dopo perturbazione proiettata")
-              #cv2_imshow(x_robust[0].transpose(1,2,0)*255)
+                
             # Compute perturbation with implicit batching
               
               if enh: x_robust=enhanc(x_robust,mask_mod)
             
-            #for per ogni batch (viene eseguito una volta)
+            #batch loop
             for batch_id in trange(
                 int(np.ceil(x_robust.shape[0] / float(self.batch_size))),
                 desc="AutoPGD - batch",
@@ -469,14 +439,13 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                 eta = self.eps_step
                 self.count_condition_1 = 0
                 
-                #for per ogni iterazione fino a max_iter
+                #interations loop
                 for k_iter in trange(self.max_iter, desc="AutoPGD - iteration", leave=False, disable=not self.verbose):
                     # Get perturbation, use small scalar to avoid division by 0
                     tol = 10e-8
-                    #cv2_imshow(x_k[0].transpose(1,2,0)*255)
                     # Get gradient wrt loss; invert it if attack is targeted
                     grad = self.estimator.loss_gradient(np.array(trans_norm(torch.Tensor(x_k))), y_batch) * (1 - 2 * int(self.targeted))
-
+                    #select mask
                     if self.random_mask: m=rand_roi(mask_mod)
                     else: m=mask_mod.copy()
 
@@ -490,20 +459,11 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                         ind = tuple(range(1, len(x_k.shape)))
                         grad = grad / (np.sqrt(np.sum(np.square(grad), axis=ind, keepdims=True)) + tol)
                     assert x_k.shape == grad.shape
-                    #calcola la perturbazione in maniera simile a FGM
-                    perturbation = grad
                     
-                    #applica la maschera alla perturbazione
-                    #if mask is not None:
-                    #    perturbation = perturbation * (mask.astype(ART_NUMPY_DTYPE))
-                    #print("pert prima mask")
-                    #cv2_imshow(perturbation[0].transpose(1,2,0)*255)
+                    perturbation = grad
                     perturbation = perturbation * (m.astype(ART_NUMPY_DTYPE))
-                    #print("pert dopo mask")
-                    #cv2_imshow(perturbation[0].transpose(1,2,0)*255)
                     perturbation = 0.2989 * perturbation[0,0,:,:] + 0.5870 * perturbation[0,1,:,:] + 0.1140 * perturbation[0,2,:,:]
-                    #for i in range(3):
-                      #z_k_p_1[0,i,:,:] = x_k[0,i,:,:] + eta * perturbation
+                    
                     # Apply perturbation and clip
                     z_k_p_1 = x_k + eta * perturbation
 
@@ -511,18 +471,13 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                         clip_min, clip_max = self.estimator.clip_values
                         z_k_p_1 = np.clip(z_k_p_1, clip_min, clip_max)
                     
-                    #print("z_k_p_1 dopo perturbazione")
-                    #cv2_imshow(z_k_p_1[0].transpose(1,2,0)*255)
-                    
                     if k_iter == 0:
                         x_1 = z_k_p_1
                         perturbation = projection(x_1 - x_init_batch, self.eps, self.norm)
                         perturbation = 0.2989 * perturbation[0,0,:,:] + 0.5870 * perturbation[0,1,:,:] + 0.1140 * perturbation[0,2,:,:]
                         for i in range(3):
                           x_1[0,i,:,:] = x_init_batch[0,i,:,:] + perturbation
-                        #x_1 = x_init_batch + perturbation
-                        #print("x_1 dopo perturbazione")
-                        #cv2_imshow(x_1[0].transpose(1,2,0)*255)
+                        
                         f_0 = self.estimator.compute_loss(x=np.array(trans_norm(torch.Tensor(x_k))), y=y_batch, reduction="mean")
                         f_1 = self.estimator.compute_loss(x=np.array(trans_norm(torch.Tensor(x_1))), y=y_batch, reduction="mean")
 
@@ -548,7 +503,6 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                         perturbation = 0.2989 * perturbation[0,0,:,:] + 0.5870 * perturbation[0,1,:,:] + 0.1140 * perturbation[0,2,:,:]
                         for i in range(3):
                           z_k_p_1[0,i,:,:] = x_init_batch[0,i,:,:] + perturbation
-                        #z_k_p_1 = x_init_batch + perturbation
 
                         alpha = 0.75
 
@@ -562,15 +516,11 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                         perturbation = 0.2989 * perturbation[0,0,:,:] + 0.5870 * perturbation[0,1,:,:] + 0.1140 * perturbation[0,2,:,:]
                         for i in range(3):
                           x_k_p_1[0,i,:,:] = x_init_batch[0,i,:,:] + perturbation
-                        #x_k_p_1 = x_init_batch + perturbation
-                        #print("x_k_p_1")
-                        #cv2_imshow(x_k_p_1[0].transpose(1,2,0)*255)
+                        
                         f_k_p_1 = self.estimator.compute_loss(x=np.array(trans_norm(torch.Tensor(x_k_p_1))), y=y_batch, reduction="mean")
-
-                        #f_k_p_1 è il valore della loss function e quantifica di quanto sbaglia il classificatore, quindi se è 0 interrompo le iterazioni e cambio punto di partenza
                         
                         if enh:  x_k_p_1=enhanc(x_k_p_1,mask_mod)
-            
+                        #test
                         pred,value,_=test_average(self.estimator,torch.Tensor(x_k_p_1),transf_orig)
                         if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
                           sample_is_not_robust=False
@@ -578,11 +528,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                           sample_is_not_robust=False
                         else:  sample_is_not_robust=True
                         if sample_is_not_robust:
-                        
-                        #if f_k_p_1 == 0.0: 
                             x_k = x_k_p_1.copy()
                             break
-                        #se ho trovato un'adv che dà pertida maggiore mi salvo questo valore, queste cose servono a cambiare dinamicamente il passo eta
                         if (not self.targeted and f_k_p_1 > self.f_max) or (self.targeted and f_k_p_1 < self.f_max):
                             self.count_condition_1 += 1
                             self.x_max = x_k_p_1
@@ -613,9 +560,8 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                             x_k = x_k_p_1.copy()
 
                 if enh: x_k=enhanc(x_k,mask_mod)
-                
+                #test
                 pred,value,_=test_average(self.estimator,torch.Tensor(x_k),transf_orig)
-                #y_pred_adv_k = self.estimator.predict(x_k)
                 if self.targeted:
                     sample_is_not_robust_k = np.invert(pred != np.argmax(y_batch, axis=1))
                 elif not self.targeted:
@@ -625,8 +571,6 @@ class AutoProjectedGradientDescent_mod(EvasionAttack):
                     elif ((pred!=np.argmax(y, axis=1)) and (pred== self.class_target) and (np.max(value)<self.confidence)):  
                       sample_is_not_robust=False
                     else:  sample_is_not_robust=True
-                #print("x_k fine for iter")
-                #cv2_imshow(x_k[0].transpose(1,2,0)*255)
                 if sample_is_not_robust:
                   x_robust[batch_index_1:batch_index_2] = x_k #carica x_robust con x_k solo se preds!=label
 
