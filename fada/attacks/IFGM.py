@@ -101,7 +101,8 @@ class IterativeFastGradientMethod(EvasionAttack):
         first adversarial example was found.
         :param x: An array with the original inputs.
         :param y: Target values (class labels) one-hot-encoded of shape (nb_samples, nb_classes).
-        :param class_target: class da predire se target=True (nel nostro caso vogliamo far predire sempre live)
+        :param mask_mod:
+        :param enh:
         :return: An array holding the adversarial examples.
         """
         adv_x = x.copy()
@@ -122,46 +123,30 @@ class IterativeFastGradientMethod(EvasionAttack):
         iter=0
         if active==True:
           adv_x=transf_resize(torch.Tensor(adv_x))
-          #mask_mod=compute_mask(torch.Tensor(adv_x))
-          #cv2_imshow(mask_mod*255)
           adv_x=np.array(adv_x)
-          #adv_x=enhanc(adv_x,[224,224],mask_mod)
-          #list_en=[i for i in range(0,self.max_iter,step_en)]
-          #x_1=adv_x.copy()
           while active==True and partial_stop_condition and iter<self.max_iter:
                 iter+=1
-                #sys.stdout.write("\rIter: {0}/{1}".format(iter,self.max_iter))
-                #sys.stdout.flush()
-                #calcolo perturbazione
+                
+                #select mask
                 if self.random_mask: m=rand_roi(mask_mod)
                 else: m=mask_mod.copy
-                #rand_mask=rand_roi(mask_mod)
-                #cv2_imshow(rand_mask*255)
+
+                #compute perturbation
                 perturbation = self._compute_perturbation(adv_x, y, m) #[-1,1]
                 
-                #trasformazione in gray
+                #grayscale 
                 r, g, b = perturbation[0,0,:,:],perturbation[0,1,:,:],perturbation[0,2,:,:]
                 perturbation = 0.2989 * r + 0.5870 * g + 0.1140 * b
                 
+                #apply perturbation
                 current_x = self._apply_perturbation(adv_x, perturbation, current_eps)
                 adv_x=current_x
-                #cv2_imshow(current_x[0].transpose(1,2,0)*255)
-                '''
-                print("prima")
-                cv2_imshow(current_x[0].transpose(1,2,0)*255)
-                adv_x=enhanc(current_x,[224,224],mask_mod)
-                print("dopo")
-                cv2_imshow(adv_x[0].transpose(1,2,0)*255)
-                '''
-                #if iter in list_en: adv_x=enhanc(adv_x,mask_mod)
-                if enh:
-                  #print("prima")
-                  #cv2_imshow(adv_x[0].transpose(1,2,0)*255)
-                  adv_x=enhanc(adv_x,mask_mod)
-                  #print("dopo")
-                  #cv2_imshow(adv_x[0].transpose(1,2,0)*255)                  
+                
+                if enh: adv_x=enhanc(adv_x,mask_mod)
+                
+                #test
                 pred,values,_=test_average(self.estimator,torch.Tensor(adv_x),transf_orig)
-                #print(values[0])
+                
                 # If targeted active check to see whether we have hit the target, otherwise head to anything but
                 if ((pred==np.argmax(y, axis=1)) and (pred!= self.class_target)):
                   active=True
@@ -173,17 +158,17 @@ class IterativeFastGradientMethod(EvasionAttack):
                 current_eps = current_eps + self.eps_step
                 partial_stop_condition = current_eps <= self.eps
 
-          #adv_x=enhanc(adv_x,[500,500],mask_mod)
-
         return adv_x
 
     def generate(self, mask_mod, x: np.ndarray, y: Optional[np.ndarray] = None, enh: Optional[bool] = False, **kwargs) -> np.ndarray:
         """Generate adversarial samples and return them in an array.
+        :param mask_mod: 
         :param x: An array with the original inputs.
         :param y: Target values (class labels) one-hot-encoded of shape (nb_samples, nb_classes) or indices of shape
                   (nb_samples,). Only provide this parameter if you'd like to use true labels when crafting adversarial
                   samples. Otherwise, model predictions are used as labels to avoid the "label leaking" effect
-                  (explained in this paper: https://arxiv.org/abs/1611.01236). Default is `None`.       
+                  (explained in this paper: https://arxiv.org/abs/1611.01236). Default is `None`.
+        :param enh:           
         :return: An array holding the adversarial examples.
         """
 
