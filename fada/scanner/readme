@@ -1,10 +1,14 @@
-If you don't want to build the liveness detector from scratch, you need to upload the data to your Google Drive.
-Follow links to data:
-dataset fingerprint livdet: https://drive.google.com/drive/folders/1e9-B7wlfSf5CNfZDsOfDP3Twj6rj46UU?usp=sharing
-weights network: https://drive.google.com/drive/folders/1kxUI3vim6O8ZFRw_ZvHPxaZgG0ulbdkE?usp=sharing
+1) if you want to build the liveness detector from scratch, you need to upload original dataset (LivDet15) to your Google Drive and then execute following notebooks:
+  i- DataAugmentation, create patch dataset
+  ii- ScannerTraining
 
-How to organize Google Drive?
--download directories: "Dataset_impronte" and "Scanner";
--insert directories in "MyDrive";
+2) if you want to build the liveness detector from scratch but you don't want create patches dataset:
+  i- Upload dataset in MyDrive: https://drive.google.com/drive/folders/1e9-B7wlfSf5CNfZDsOfDP3Twj6rj46UU?usp=sharing
+  ii- Execute notebook "ScannerTraining"
 
-TODO: in Dataset_impronte/training/ sono presenti solo i dataset con patch, quindi bisogna caricare anche i dataset originali o inserire un altro link esterno
+3) If you don't want to build the liveness detector from scratch, upload these datasets in "MyDrive":
+  i- patches dataset in directory "Dataset_impronte": https://drive.google.com/drive/folders/1e9-B7wlfSf5CNfZDsOfDP3Twj6rj46UU?usp=sharing
+  ii- weights network in directory "Scanner": https://drive.google.com/drive/folders/1kxUI3vim6O8ZFRw_ZvHPxaZgG0ulbdkE?usp=sharing
+  
+Finally, you can execute notebook in "examples"
+
