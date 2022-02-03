@@ -524,5 +524,4 @@ class FingerprintImageEnhancer(object):
           self.__ridge_filter()       # filter the image using oriented gabor filter
           failed=False
         else: failed=True
-        #self._binim = 255 * self._binim.astype('uint8')
         return(np.array(self._binim).astype('int'),failed)
