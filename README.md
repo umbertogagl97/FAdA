@@ -17,3 +17,6 @@ directory with main attacks
 Directory that contains examples notebooks about attacks to scanners
 ##### attacco_scanner
 notebook that tests a scanner
+
+## How?
+go to readme in "scanner" directory
