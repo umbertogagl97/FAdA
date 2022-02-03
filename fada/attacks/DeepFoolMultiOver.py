@@ -87,16 +87,16 @@ class DeepFool_mod(EvasionAttack):
     def generate(self, mask_mod, x: np.ndarray, y: Optional[np.ndarray] = None, enh=False, **kwargs) -> np.ndarray:
         """
         Generate adversarial samples and return them in an array.
+        :param mask_mod:
         :param x: An array with the original inputs to be attacked.
         :param y: An array with the original labels to be predicted.
+        :param enh:
         :return: An array holding the adversarial examples.
         """
         x_adv = x.astype(ART_NUMPY_DTYPE)
 
         size_init=np.array(x.shape[2:4])
         transf_orig=transforms.Resize(size=(size_init[0],size_init[1]),interpolation=InterpolationMode.NEAREST)
-
-        #preds = self.estimator.predict(x, batch_size=self.batch_size)
 
         class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(x_adv),transf_orig)
         preds=np.array(preds).reshape(1,2)
@@ -125,6 +125,7 @@ class DeepFool_mod(EvasionAttack):
         # Pick a small scalar to avoid division by 0
         tol = 10e-8
 
+        #test
         if ((class_pred==np.argmax(y, axis=1)) and (class_pred!= self.class_target)):
             active=True
         elif ((class_pred!=np.argmax(y, axis=1)) and (class_pred== self.class_target) and (np.max(prob_preds)<self.confidence)): 
@@ -133,9 +134,7 @@ class DeepFool_mod(EvasionAttack):
 
         if active: 
             x_adv=transf_resize(torch.Tensor(x_adv))
-            #mask_mod=compute_mask(x_adv)
             x_adv=np.array(x_adv)
-
             x_init=transf_resize(torch.Tensor(x.astype(ART_NUMPY_DTYPE)))
             x_init=np.array(x_init)
 
@@ -147,9 +146,6 @@ class DeepFool_mod(EvasionAttack):
             batch = x_adv[batch_index_1:batch_index_2].copy()
 
             # Get predictions and gradients for batch
-            #f_batch = preds[batch_index_1:batch_index_2] #predizioni
-            #fk_hat = np.argmax(f_batch, axis=1) #classe predetta
-            
             batch_grd=np.array(trans_norm(torch.Tensor(batch)))
             if use_grads_subset:
                 # Compute gradients only for top predicted classes
@@ -160,19 +156,17 @@ class DeepFool_mod(EvasionAttack):
                 grd = self.estimator.class_gradient(batch_grd)
 
             # Get current predictions
-
-            #active_indices = np.arange(len(batch))
             current_step = 0
 
             while active==True and current_step < self.max_iter:
                 # Compute difference in predictions and gradients only for selected top predictions
                 labels_indices = sorter[np.searchsorted(labels_set, class_pred, sorter=sorter)]
-                #rand_mask=rand_roi(mask_mod)
+                #select mask
                 if self.random_mask: m=rand_roi(mask_mod)
                 else: m=mask_mod.copy()
                 grad_diff = (grd - grd[np.arange(len(grd)), labels_indices][:, None])*m
                 f_diff = preds[:,labels_set] - preds[np.arange(len(preds)), labels_indices][:, None]
-
+                
                 # Choose coordinate and compute perturbation
                 norm = np.linalg.norm(grad_diff.reshape(len(grad_diff), len(labels_set), -1), axis=2) + tol
                 value = np.abs(f_diff) / norm
@@ -190,9 +184,7 @@ class DeepFool_mod(EvasionAttack):
                 r_var = absolute1 / pow1
                 r_var = r_var.reshape((-1,) + (1,) * (len(x.shape) - 1))
                 r_var = r_var * grad_diff[np.arange(len(grad_diff)), l_var]
-                #print("pert")
-                #plt.imshow(r_var[0].transpose(1,2,0)*255)
-                #plt.show()
+                #grayscale
                 r, g, b = r_var[0,0,:,:],r_var[0,1,:,:],r_var[0,2,:,:]
                 r_var = 0.2989 * r + 0.5870 * g + 0.1140 * b
 
@@ -212,8 +204,6 @@ class DeepFool_mod(EvasionAttack):
                 # Recompute prediction for new x
                 class_pred_i,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch),transf_orig)
                 preds=np.array(preds).reshape(1,2)
-                #f_batch = self.estimator.predict(batch)
-                #fk_i_hat = np.argmax(f_batch, axis=1)
                 
                 batch_grd=np.array(trans_norm(torch.Tensor(batch)))
                 # Recompute gradients for new x
@@ -225,8 +215,7 @@ class DeepFool_mod(EvasionAttack):
                     # Compute gradients for all classes
                     grd = self.estimator.class_gradient(batch_grd)
 
-                # Stop if misclassification has been achieved
-                #active_indices = np.where(class_pred_i == class_pred)[0]
+                #test
                 if ((class_pred_i==np.argmax(y, axis=1)) and (class_pred_i!= self.class_target)):
                   active=True
                 elif ((class_pred_i!=np.argmax(y, axis=1)) and (class_pred_i== self.class_target) and (np.max(prob_preds)<self.confidence)): 
@@ -235,6 +224,7 @@ class DeepFool_mod(EvasionAttack):
 
                 current_step += 1
             
+            #multiplication by eps
             ov_it=0
             while active and ov_it<self.max_over:
               x_adv2 = (1 + self.epsilon) * (batch - x_init)            
@@ -247,8 +237,9 @@ class DeepFool_mod(EvasionAttack):
                       self.estimator.clip_values[0],
                       self.estimator.clip_values[1],
                       out=batch,
-                  )   
+                  )
               if enh: batch=enhanc(batch,mask_mod)
+              #test
               class_pred,prob_preds,preds=test_average(self.estimator,torch.Tensor(batch),transf_orig)
               if ((class_pred==np.argmax(y, axis=1)) and (class_pred!= self.class_target)):
                   active=True
@@ -258,12 +249,7 @@ class DeepFool_mod(EvasionAttack):
               ov_it+=1
               
             x_adv=batch
-        '''      
-        logger.info(
-            "Success rate of DeepFool attack: %.2f%%",
-            100 * compute_success(self.estimator, x, y, x_adv, batch_size=self.batch_size),
-        )
-        '''
+
         return x_adv
 
     def _check_params(self) -> None:
