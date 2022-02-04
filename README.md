@@ -1,5 +1,5 @@
 # FAdA
-Fingerprint Adversarial Presentation Attacks is a Python library for Machine Learning Security.
+Fingerprint Adversarial Attacks is a Python library for Machine Learning Security.
 FAdA is based on Adversarial Robustness Toolbox (ART) and it is specialized in attacks to Fingerprint Liveness Detection.
 
 ## Install fada on colab
