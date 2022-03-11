@@ -6,7 +6,7 @@ FAdA is a Python library for Machine Learning Security based on Adversarial Robu
 The peculiarity of FAdA is that the attacks are aimed at the realization of presentation attacks that can be used in the real world
 
 ## Installation
-- **Colab**: ```!pip install git+https://github.com/umbertogagl97/FAdA.git>```
+- **Colab**: ```!pip install git+https://github.com/umbertogagl97/FAdA.git```
 see examples/ScannerAttack for more informations
 
 ## fada
